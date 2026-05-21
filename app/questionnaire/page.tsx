@@ -105,8 +105,8 @@ export default function QuestionnairePage() {
 
         {needsPayment ? (
           <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-sm text-amber-100">
-            Every report requires one paid credit. Please complete checkout (CNY 10 or USD 5 per
-            report) before generating analysis.
+            Every report requires one paid credit. Please complete checkout (USD $5 per report)
+            before generating analysis.
           </div>
         ) : paidCredits > 0 ? (
           <div className="mt-4 rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-4 py-3 text-sm text-cyan-100">

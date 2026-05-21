@@ -12,8 +12,6 @@ import { createCheckoutSession, verifyCheckoutSession } from "@/lib/api-client";
 import { getFlowSubmission, setFlowSubmission } from "@/lib/flow-storage";
 import { getQuestionnaireAnswers } from "@/lib/storage";
 
-type PriceOption = "CNY 10" | "USD 5";
-
 export default function CheckoutPage() {
   const router = useRouter();
   const [query, setQuery] = useState<{
@@ -25,7 +23,6 @@ export default function CheckoutPage() {
     sessionId: null,
     submissionId: null,
   });
-  const [selected, setSelected] = useState<PriceOption>("USD 5");
   const [paying, setPaying] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -80,6 +77,7 @@ export default function CheckoutPage() {
               setError("Payment was not completed. Please try again.");
             }
           } catch (verifyError) {
+            console.error("Failed to verify checkout session:", verifyError);
             const message =
               verifyError instanceof Error
                 ? verifyError.message
@@ -117,16 +115,18 @@ export default function CheckoutPage() {
     void (async () => {
       try {
         const checkoutUrl = await createCheckoutSession({
-          priceOption: selected === "USD 5" ? "USD_5" : "CNY_10",
           submissionId: flowSubmissionId ?? undefined,
         });
         window.location.href = checkoutUrl;
       } catch (checkoutError) {
+        console.error("Failed to create checkout session:", checkoutError);
         const message =
           checkoutError instanceof Error
             ? checkoutError.message
             : "Unable to start checkout.";
         setError(message);
+        setPaying(false);
+      } finally {
         setPaying(false);
       }
     })();
@@ -145,7 +145,7 @@ export default function CheckoutPage() {
           Every report requires one paid credit. Complete payment to generate this report.
         </p>
         <p className="mt-2 text-sm text-slate-400">
-          Global pricing: pay with USD 5 (international) or CNY 10 (Mainland China option).
+          Pricing for this MVP: USD $5 per report.
         </p>
 
         <div className="mt-6 grid gap-5 md:grid-cols-2">
@@ -159,24 +159,11 @@ export default function CheckoutPage() {
               before report generation.
             </p>
             <p className="mt-2 text-xs text-slate-400">
-              Default checkout currency is USD 5. You can switch to CNY 10 manually.
+              Current checkout is fixed at USD $5 per report.
             </p>
 
-            <div className="mt-5 space-y-3">
-              {(["CNY 10", "USD 5"] as PriceOption[]).map((option) => (
-                <button
-                  key={option}
-                  onClick={() => setSelected(option)}
-                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition ${
-                    selected === option
-                      ? "border-cyan-300/70 bg-cyan-500/20 text-cyan-50"
-                      : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                  }`}
-                >
-                  <span>{option}</span>
-                  <span>{selected === option ? "Selected" : "Choose"}</span>
-                </button>
-              ))}
+            <div className="mt-5 rounded-xl border border-cyan-300/40 bg-cyan-500/15 px-4 py-3 text-sm text-cyan-50">
+              USD $5 (one-time) for one report credit
             </div>
 
             <button
@@ -184,18 +171,15 @@ export default function CheckoutPage() {
               disabled={paying}
               className="btn-primary mt-5 w-full"
             >
-              {paying ? "Processing payment..." : `Pay ${selected} and continue`}
+              {paying ? "Redirecting to Stripe..." : "Pay USD $5 and continue"}
             </button>
 
             <p className="mt-3 rounded-lg border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
               Test-mode note: when Stripe keys are test keys, no real card charge occurs.
             </p>
             <p className="mt-2 text-xs text-amber-200/90">
-              For live payments, connect Stripe (USD) and a CNY-capable provider (for example
-              WeChat Pay/Alipay through a supported PSP) with server-side webhook verification.
-            </p>
-            <p className="mt-2 text-xs text-slate-400">
-              Suggested launch setup: card payments globally, local wallets for China.
+              Checkout is currently configured for USD only. Local wallet methods can be added in
+              future versions.
             </p>
 
             {paymentOnlyMode ? (

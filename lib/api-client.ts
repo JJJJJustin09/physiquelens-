@@ -80,20 +80,17 @@ export async function fetchLatestReport(submissionId?: string) {
   return payload;
 }
 
-export async function createCheckoutSession(payload: {
-  priceOption: "USD_5" | "CNY_10";
-  submissionId?: string;
-}) {
+export async function createCheckoutSession(payload: { submissionId?: string }) {
   const response = await fetch("/api/checkout/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   const data = (await response.json().catch(() => null)) as
-    | { checkoutUrl?: string; error?: string; details?: string }
+    | { url?: string; sessionId?: string; error?: string; details?: string }
     | null;
 
-  if (!response.ok || !data?.checkoutUrl) {
+  if (!response.ok || !data?.url) {
     const msg =
       data?.details ??
       data?.error ??
@@ -101,7 +98,7 @@ export async function createCheckoutSession(payload: {
     throw new Error(msg);
   }
 
-  return data.checkoutUrl;
+  return data.url;
 }
 
 export async function verifyCheckoutSession(sessionId: string) {

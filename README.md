@@ -36,9 +36,8 @@ It uses questionnaire-based mock logic to generate a professional-style report d
 ## Pricing Logic
 
 - Every generated report requires 1 paid credit
-- Price options in checkout page:
-  - USD 5
-  - CNY 10
+- Current checkout price:
+  - USD $5
 
 ## Environment Variables
 
@@ -49,10 +48,10 @@ DATABASE_URL=
 NEXTAUTH_SECRET=
 NEXTAUTH_URL=
 NEXT_PUBLIC_APP_URL=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
-STRIPE_PRICE_USD_5=
-STRIPE_PRICE_CNY_10=
+STRIPE_PRICE_ID=
 ```
 
 ## Database Setup
