@@ -90,11 +90,15 @@ export async function createCheckoutSession(payload: {
     body: JSON.stringify(payload),
   });
   const data = (await response.json().catch(() => null)) as
-    | { checkoutUrl?: string; error?: string }
+    | { checkoutUrl?: string; error?: string; details?: string }
     | null;
 
   if (!response.ok || !data?.checkoutUrl) {
-    throw new Error(data?.error ?? "Unable to create checkout session.");
+    const msg =
+      data?.details ??
+      data?.error ??
+      "Unable to create checkout session.";
+    throw new Error(msg);
   }
 
   return data.checkoutUrl;

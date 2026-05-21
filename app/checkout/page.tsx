@@ -25,7 +25,7 @@ export default function CheckoutPage() {
     sessionId: null,
     submissionId: null,
   });
-  const [selected, setSelected] = useState<PriceOption>("CNY 10");
+  const [selected, setSelected] = useState<PriceOption>("USD 5");
   const [paying, setPaying] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -110,21 +110,7 @@ export default function CheckoutPage() {
     return () => window.clearTimeout(timer);
   }, [flowSubmissionId, query.sessionId, query.status, query.submissionId, router]);
 
-  useEffect(() => {
-    const locale = Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase();
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone.toLowerCase();
-    const preferCny = locale.includes("zh-cn") || timeZone.includes("shanghai");
-    const timer = window.setTimeout(() => {
-      setSelected(preferCny ? "CNY 10" : "USD 5");
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, []);
-
   const handlePay = () => {
-    if (!flowSubmissionId) {
-      setError("Missing submission context. Please re-submit the questionnaire.");
-      return;
-    }
     setPaying(true);
     setError(null);
 
@@ -169,8 +155,11 @@ export default function CheckoutPage() {
             </div>
             <h2 className="text-xl font-semibold text-white">Choose your price</h2>
             <p className="mt-2 text-sm text-slate-400">
-              Commercial flow is now connected to Stripe Checkout. Payment must be confirmed
+              Commercial flow is connected to Stripe Checkout. Payment must be confirmed
               before report generation.
+            </p>
+            <p className="mt-2 text-xs text-slate-400">
+              Default checkout currency is USD 5. You can switch to CNY 10 manually.
             </p>
 
             <div className="mt-5 space-y-3">
