@@ -71,17 +71,14 @@ export default function QuestionnairePage() {
           questionnaire: values,
         });
         setFlowSubmission(submission.submissionId);
+        if (submission.paymentRequired) {
+          router.push(`/checkout?submission_id=${encodeURIComponent(submission.submissionId)}`);
+          return;
+        }
         router.push("/processing");
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unable to continue. Please try again.";
-        if (/payment required/i.test(message)) {
-          setApiError(
-            "No paid credits available. Please go to checkout to purchase report access.",
-          );
-          router.push("/checkout");
-          return;
-        }
         setApiError(message);
         setSubmitting(false);
       }
@@ -118,7 +115,7 @@ export default function QuestionnairePage() {
           </div>
         ) : (
           <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-sm text-amber-100">
-            No paid credits available. Please complete checkout before generating a report.
+            No paid credits available. Submit this questionnaire first, then you will be taken to checkout and report generation continues automatically after successful payment.
           </div>
         )}
 

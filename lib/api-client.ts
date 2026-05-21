@@ -41,6 +41,7 @@ export async function createSubmission(payload: {
   return (await response.json()) as {
     submissionId: string;
     createdAt: string;
+    paymentRequired: boolean;
   };
 }
 
@@ -81,7 +82,7 @@ export async function fetchLatestReport(submissionId?: string) {
 
 export async function createCheckoutSession(payload: {
   priceOption: "USD_5" | "CNY_10";
-  submissionId: string;
+  submissionId?: string;
 }) {
   const response = await fetch("/api/checkout/session", {
     method: "POST",

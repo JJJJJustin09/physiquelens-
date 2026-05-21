@@ -30,6 +30,7 @@ export default function CheckoutPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentOnlyMode, setPaymentOnlyMode] = useState(false);
   const flowSubmissionId = query.submissionId ?? getFlowSubmission()?.submissionId ?? null;
 
   useEffect(() => {
@@ -48,13 +49,9 @@ export default function CheckoutPage() {
     const answers = getQuestionnaireAnswers();
     const status = query.status;
     const hasCheckoutReturn = status === "success" || status === "cancel";
-    if (!answers && !hasCheckoutReturn) {
-      router.replace("/questionnaire");
-      return;
-    }
-    if (!flowSubmissionId && !hasCheckoutReturn) {
-      router.replace("/questionnaire");
-      return;
+    if (!answers && !flowSubmissionId && !hasCheckoutReturn) {
+      const modeTimer = window.setTimeout(() => setPaymentOnlyMode(true), 0);
+      return () => window.clearTimeout(modeTimer);
     }
 
     const checkoutSessionId = query.sessionId;
@@ -68,9 +65,13 @@ export default function CheckoutPage() {
               const submissionIdForFlow = flowSubmissionId ?? query.submissionId;
               if (submissionIdForFlow) {
                 setFlowSubmission(submissionIdForFlow);
+                setPaymentOnlyMode(false);
+                setToast("Payment confirmed. Continuing to report generation...");
+                router.replace("/processing");
+                return;
               }
-              setToast("Payment confirmed. Continuing to report generation...");
-              router.replace("/processing");
+              setToast("Payment confirmed. Credit added. You can now generate a report.");
+              setReady(true);
               return;
             }
             if (verification.status === "pending") {
@@ -131,7 +132,7 @@ export default function CheckoutPage() {
       try {
         const checkoutUrl = await createCheckoutSession({
           priceOption: selected === "USD 5" ? "USD_5" : "CNY_10",
-          submissionId: flowSubmissionId,
+          submissionId: flowSubmissionId ?? undefined,
         });
         window.location.href = checkoutUrl;
       } catch (checkoutError) {
@@ -169,7 +170,7 @@ export default function CheckoutPage() {
             <h2 className="text-xl font-semibold text-white">Choose your price</h2>
             <p className="mt-2 text-sm text-slate-400">
               Commercial flow is now connected to Stripe Checkout. Payment must be confirmed
-              before the next report is generated.
+              before report generation.
             </p>
 
             <div className="mt-5 space-y-3">
@@ -207,6 +208,12 @@ export default function CheckoutPage() {
             <p className="mt-2 text-xs text-slate-400">
               Suggested launch setup: card payments globally, local wallets for China.
             </p>
+
+            {paymentOnlyMode ? (
+              <p className="mt-3 rounded-lg border border-cyan-400/35 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
+                Credit top-up mode detected. For instant report generation, start from Upload → Questionnaire so checkout is linked to a specific submission.
+              </p>
+            ) : null}
           </Panel>
 
           <Panel className="p-5 sm:p-6">
@@ -238,6 +245,16 @@ export default function CheckoutPage() {
               <p className="mt-4 rounded-lg border border-rose-400/35 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
                 {error}
               </p>
+            ) : null}
+
+            {paymentOnlyMode ? (
+              <button
+                type="button"
+                onClick={() => router.push("/questionnaire")}
+                className="btn-secondary mt-4"
+              >
+                Back to Questionnaire
+              </button>
             ) : null}
           </Panel>
         </div>

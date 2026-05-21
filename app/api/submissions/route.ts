@@ -69,16 +69,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "User not found." }, { status: 404 });
   }
 
-  if (billing.paidCredits <= 0) {
-    return NextResponse.json(
-      {
-        error: "Payment required before generating the next report.",
-        code: "PAYMENT_REQUIRED",
-      },
-      { status: 402 },
-    );
-  }
-
   const submission = await prisma.submission.create({
     data: {
       userId: session.user.id,
@@ -91,5 +81,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     submissionId: submission.id,
     createdAt: submission.createdAt.toISOString(),
+    paymentRequired: billing.paidCredits <= 0,
   });
 }

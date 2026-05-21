@@ -8,7 +8,7 @@ import { getStripeClient } from "@/lib/stripe";
 
 const bodySchema = z.object({
   priceOption: z.enum(["USD_5", "CNY_10"]),
-  submissionId: z.string().min(1),
+  submissionId: z.string().min(1).optional(),
 });
 
 export async function POST(request: Request) {
@@ -25,18 +25,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid checkout request." }, { status: 400 });
   }
 
-  const submission = await prisma.submission.findFirst({
-    where: {
-      id: parsed.data.submissionId,
-      userId: session.user.id,
-    },
-    select: { id: true },
-  });
-  if (!submission) {
-    return NextResponse.json(
-      { error: "Submission not found. Please submit the questionnaire again." },
-      { status: 404 },
-    );
+  if (parsed.data.submissionId) {
+    const submission = await prisma.submission.findFirst({
+      where: {
+        id: parsed.data.submissionId,
+        userId: session.user.id,
+      },
+      select: { id: true },
+    });
+    if (!submission) {
+      return NextResponse.json(
+        { error: "Submission not found. Please submit the questionnaire again." },
+        { status: 404 },
+      );
+    }
   }
 
   const priceId =
@@ -58,11 +60,11 @@ export async function POST(request: Request) {
     ],
     metadata: {
       userId: session.user.id,
-      submissionId: parsed.data.submissionId,
+      submissionId: parsed.data.submissionId ?? "",
       priceOption: parsed.data.priceOption,
     },
-    success_url: `${appUrl}/checkout?status=success&session_id={CHECKOUT_SESSION_ID}&submission_id=${encodeURIComponent(parsed.data.submissionId)}`,
-    cancel_url: `${appUrl}/checkout?status=cancel&submission_id=${encodeURIComponent(parsed.data.submissionId)}`,
+    success_url: `${appUrl}/checkout?status=success&session_id={CHECKOUT_SESSION_ID}${parsed.data.submissionId ? `&submission_id=${encodeURIComponent(parsed.data.submissionId)}` : ""}`,
+    cancel_url: `${appUrl}/checkout?status=cancel${parsed.data.submissionId ? `&submission_id=${encodeURIComponent(parsed.data.submissionId)}` : ""}`,
   });
 
   await prisma.payment.create({
