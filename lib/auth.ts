@@ -1,6 +1,7 @@
 import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { JWT } from "next-auth/jwt";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -10,8 +11,11 @@ const signInSchema = z.object({
   password: z.string().min(8),
 });
 
+type TokenWithUserId = JWT & { userId?: string };
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+  secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/auth/sign-in",
@@ -46,14 +50,18 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
+      const nextToken = token as TokenWithUserId;
       if (user?.id) {
-        token.userId = user.id;
+        nextToken.userId = user.id;
+      } else if (!nextToken.userId && typeof nextToken.sub === "string") {
+        nextToken.userId = nextToken.sub;
       }
-      return token;
+      return nextToken;
     },
     async session({ session, token }) {
-      if (session.user && typeof token.userId === "string") {
-        session.user.id = token.userId;
+      const sessionToken = token as TokenWithUserId;
+      if (session.user && typeof sessionToken.userId === "string") {
+        session.user.id = sessionToken.userId;
       }
       return session;
     },

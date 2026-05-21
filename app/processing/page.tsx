@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { SiteNav } from "@/components/layout/site-nav";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ProcessingSteps } from "@/components/processing/processing-steps";
-import { generateReport } from "@/lib/api-client";
+import { fetchSessionStatus, generateReport } from "@/lib/api-client";
 import { clearFlowSubmission, getFlowSubmission, setLatestReportSubmissionId } from "@/lib/flow-storage";
 import { saveStoredReport } from "@/lib/storage";
 
@@ -18,46 +18,79 @@ export default function ProcessingPage() {
   const finalizedRef = useRef(false);
 
   useEffect(() => {
-    const flow = getFlowSubmission();
+    let stepTimer: number | null = null;
 
+    const flow = getFlowSubmission();
     if (!flow) {
       router.replace("/questionnaire");
       return;
     }
 
-    const stepTimer = window.setInterval(() => {
-      setActiveStep((prev) => {
-        if (prev >= totalSteps - 1) {
-          window.clearInterval(stepTimer);
-          if (finalizedRef.current) return prev;
-          finalizedRef.current = true;
-          void (async () => {
-            try {
-              const report = await generateReport({
-                submissionId: flow.submissionId,
-              });
-              saveStoredReport(report);
-              setLatestReportSubmissionId(flow.submissionId);
-              clearFlowSubmission();
-              window.setTimeout(() => {
-                router.replace("/report?generated=1");
-              }, 500);
-            } catch (generateError) {
-              const message =
-                generateError instanceof Error
-                  ? generateError.message
-                  : "Failed to generate report.";
-              setError(message);
-            }
-          })();
-
-          return prev;
+    const bootTimer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const sessionStatus = await fetchSessionStatus();
+          if (!sessionStatus.authenticated) {
+            router.replace(`/auth/sign-in?callbackUrl=${encodeURIComponent("/processing")}`);
+            return;
+          }
+        } catch (sessionError) {
+          console.error("Failed to verify processing session:", sessionError);
+          setError("Session expired. Please sign in again.");
+          router.replace(`/auth/sign-in?callbackUrl=${encodeURIComponent("/processing")}`);
+          return;
         }
-        return prev + 1;
-      });
-    }, 650);
 
-    return () => window.clearInterval(stepTimer);
+        stepTimer = window.setInterval(() => {
+          setActiveStep((prev) => {
+            if (prev >= totalSteps - 1) {
+              if (stepTimer !== null) {
+                window.clearInterval(stepTimer);
+              }
+              if (finalizedRef.current) return prev;
+              finalizedRef.current = true;
+              void (async () => {
+                try {
+                  const report = await generateReport({
+                    submissionId: flow.submissionId,
+                  });
+                  saveStoredReport(report);
+                  setLatestReportSubmissionId(flow.submissionId);
+                  clearFlowSubmission();
+                  window.setTimeout(() => {
+                    router.replace("/report?generated=1");
+                  }, 500);
+                } catch (generateError) {
+                  const message =
+                    generateError instanceof Error
+                      ? generateError.message
+                      : "Failed to generate report.";
+                  if (message === "Unauthorized") {
+                    router.replace(`/auth/sign-in?callbackUrl=${encodeURIComponent("/processing")}`);
+                    return;
+                  }
+                  if (message === "No paid credits available.") {
+                    router.replace("/checkout");
+                    return;
+                  }
+                  setError(message);
+                }
+              })();
+
+              return prev;
+            }
+            return prev + 1;
+          });
+        }, 650);
+      })();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(bootTimer);
+      if (stepTimer !== null) {
+        window.clearInterval(stepTimer);
+      }
+    };
   }, [router]);
 
   return (

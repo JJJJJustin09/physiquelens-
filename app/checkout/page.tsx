@@ -8,7 +8,7 @@ import { SiteNav } from "@/components/layout/site-nav";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { InlineToast } from "@/components/layout/inline-toast";
 import { Panel } from "@/components/layout/ui";
-import { createCheckoutSession, verifyCheckoutSession } from "@/lib/api-client";
+import { createCheckoutSession, fetchSessionStatus, verifyCheckoutSession } from "@/lib/api-client";
 import { getFlowSubmission, setFlowSubmission } from "@/lib/flow-storage";
 import { getQuestionnaireAnswers } from "@/lib/storage";
 
@@ -46,10 +46,23 @@ export default function CheckoutPage() {
     const answers = getQuestionnaireAnswers();
     const status = query.status;
     const hasCheckoutReturn = status === "success" || status === "cancel";
-    if (!answers && !flowSubmissionId && !hasCheckoutReturn) {
-      const modeTimer = window.setTimeout(() => setPaymentOnlyMode(true), 0);
-      return () => window.clearTimeout(modeTimer);
-    }
+    const authTimer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const sessionStatus = await fetchSessionStatus();
+          if (!sessionStatus.authenticated) {
+            router.replace(`/auth/sign-in?callbackUrl=${encodeURIComponent("/checkout")}`);
+            return;
+          }
+
+          if (!answers && !flowSubmissionId && !hasCheckoutReturn) {
+            setPaymentOnlyMode(true);
+          }
+        } catch (error) {
+          console.error("Failed to verify checkout session status:", error);
+        }
+      })();
+    }, 0);
 
     const checkoutSessionId = query.sessionId;
     if (status === "success" && checkoutSessionId) {
@@ -90,6 +103,7 @@ export default function CheckoutPage() {
       }, 0);
       const readyTimer = window.setTimeout(() => setReady(true), 0);
       return () => {
+        window.clearTimeout(authTimer);
         window.clearTimeout(verifyTimer);
         window.clearTimeout(readyTimer);
       };
@@ -99,13 +113,17 @@ export default function CheckoutPage() {
       }, 0);
       const readyTimer = window.setTimeout(() => setReady(true), 0);
       return () => {
+        window.clearTimeout(authTimer);
         window.clearTimeout(cancelTimer);
         window.clearTimeout(readyTimer);
       };
     }
 
     const timer = window.setTimeout(() => setReady(true), 0);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(authTimer);
+      window.clearTimeout(timer);
+    };
   }, [flowSubmissionId, query.sessionId, query.status, query.submissionId, router]);
 
   const handlePay = () => {
@@ -124,8 +142,11 @@ export default function CheckoutPage() {
           checkoutError instanceof Error
             ? checkoutError.message
             : "Unable to start checkout.";
+        if (message === "Unauthorized") {
+          router.push(`/auth/sign-in?callbackUrl=${encodeURIComponent("/checkout")}`);
+          return;
+        }
         setError(message);
-        setPaying(false);
       } finally {
         setPaying(false);
       }

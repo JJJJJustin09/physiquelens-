@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { SiteNav } from "@/components/layout/site-nav";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -10,11 +10,34 @@ import { Panel } from "@/components/layout/ui";
 
 export default function SignUpPage() {
   const router = useRouter();
+  const { status } = useSession();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [callbackUrl, setCallbackUrl] = useState(() => {
+    if (typeof window === "undefined") {
+      return "/upload";
+    }
+    const params = new URLSearchParams(window.location.search);
+    return params.get("callbackUrl") ?? "/upload";
+  });
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace(callbackUrl);
+    }
+  }, [callbackUrl, router, status]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const callback = params.get("callbackUrl");
+    if (callback && callback !== callbackUrl) {
+      const timer = window.setTimeout(() => setCallbackUrl(callback), 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, [callbackUrl]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -38,7 +61,7 @@ export default function SignUpPage() {
       email,
       password,
       redirect: false,
-      callbackUrl: "/upload",
+      callbackUrl,
     });
 
     if (signInResult?.error) {
@@ -47,12 +70,14 @@ export default function SignUpPage() {
       return;
     }
 
-    router.push("/upload");
+    router.push(signInResult?.url ?? callbackUrl);
   };
+
+  const signInHref = `/auth/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}`;
 
   return (
     <div className="min-h-screen bg-[#05070A]">
-      <SiteNav ctaHref="/auth/sign-in" ctaLabel="Sign In" />
+      <SiteNav ctaHref={signInHref} ctaLabel="Sign In" />
       <main className="mx-auto flex w-full max-w-md px-4 py-14 sm:px-6 lg:px-8">
         <Panel className="w-full p-6 sm:p-7">
           <h1 className="text-2xl font-semibold tracking-tight text-white">Create account</h1>
@@ -109,7 +134,7 @@ export default function SignUpPage() {
 
           <p className="mt-4 text-sm text-slate-400">
             Already have an account?{" "}
-            <Link href="/auth/sign-in" className="text-cyan-300 hover:text-cyan-200">
+            <Link href={signInHref} className="text-cyan-300 hover:text-cyan-200">
               Sign in
             </Link>
           </p>

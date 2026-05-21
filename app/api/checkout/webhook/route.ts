@@ -29,7 +29,19 @@ export async function POST(request: Request) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.userId;
+    const email = session.metadata?.email ?? session.customer_details?.email ?? session.customer_email;
     if (!userId) {
+      console.error("Stripe webhook missing metadata.userId on checkout.session.completed", {
+        checkoutSessionId: session.id,
+        email,
+      });
+      await prisma.payment.updateMany({
+        where: {
+          stripeCheckoutSessionId: session.id,
+          status: PaymentStatus.PENDING,
+        },
+        data: { status: PaymentStatus.FAILED },
+      });
       return NextResponse.json({ received: true });
     }
 
@@ -54,12 +66,23 @@ export async function POST(request: Request) {
       });
 
       if (succeeded) {
-        await tx.user.update({
+        const updated = await tx.user.updateMany({
           where: { id: userId },
           data: {
             paidCredits: { increment: payment.creditsPurchased },
           },
         });
+        if (updated.count === 0) {
+          console.error("Stripe webhook could not find user for paid credit increment", {
+            checkoutSessionId: session.id,
+            userId,
+            email,
+          });
+          await tx.payment.update({
+            where: { id: payment.id },
+            data: { status: PaymentStatus.FAILED },
+          });
+        }
       }
     });
   }

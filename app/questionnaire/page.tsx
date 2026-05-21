@@ -8,7 +8,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { QuestionnaireForm } from "@/components/questionnaire/questionnaire-form";
 import { InlineToast } from "@/components/layout/inline-toast";
 import type { QuestionnaireAnswers } from "@/lib/types";
-import { createSubmission, fetchBillingStatus } from "@/lib/api-client";
+import { createSubmission, fetchBillingStatus, fetchSessionStatus } from "@/lib/api-client";
 import { setFlowSubmission } from "@/lib/flow-storage";
 import {
   getPhotoMeta,
@@ -40,10 +40,20 @@ export default function QuestionnairePage() {
         setCanProceed(false);
       }
       try {
+        const sessionStatus = await fetchSessionStatus();
+        if (!sessionStatus.authenticated) {
+          router.replace(`/auth/sign-in?callbackUrl=${encodeURIComponent("/questionnaire")}`);
+          return;
+        }
         const billing = await fetchBillingStatus();
         setNeedsPayment(!billing.canStartNewAnalysis);
         setPaidCredits(billing.paidCredits);
-      } catch {
+      } catch (error) {
+        console.error("Failed to load questionnaire session/billing state:", error);
+        if (error instanceof Error && error.message === "Unauthorized") {
+          router.replace(`/auth/sign-in?callbackUrl=${encodeURIComponent("/questionnaire")}`);
+          return;
+        }
         setApiError("Unable to load account billing status. Please refresh and try again.");
       }
 
@@ -51,7 +61,7 @@ export default function QuestionnairePage() {
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [router]);
 
   const handleSubmit = (values: QuestionnaireAnswers) => {
     const photoMeta = getPhotoMeta();
@@ -79,6 +89,10 @@ export default function QuestionnairePage() {
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unable to continue. Please try again.";
+        if (message === "Unauthorized") {
+          router.push(`/auth/sign-in?callbackUrl=${encodeURIComponent("/questionnaire")}`);
+          return;
+        }
         setApiError(message);
         setSubmitting(false);
       }

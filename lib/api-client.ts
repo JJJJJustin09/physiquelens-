@@ -15,7 +15,11 @@ type BillingStateResponse = {
 export async function fetchBillingStatus() {
   const response = await fetch("/api/billing/status", { cache: "no-store" });
   if (!response.ok) {
-    throw new Error("Failed to fetch billing status.");
+    const payload = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    const message = payload?.error ?? "Failed to fetch billing status.";
+    throw new Error(message);
   }
   const payload = (await response.json()) as { billing: BillingStateResponse };
   return payload.billing;
@@ -42,6 +46,21 @@ export async function createSubmission(payload: {
     submissionId: string;
     createdAt: string;
     paymentRequired: boolean;
+  };
+}
+
+export async function fetchSessionStatus() {
+  const response = await fetch("/api/auth/session", { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error("Unable to verify session.");
+  }
+  const payload = (await response.json()) as {
+    user?: { id?: string; email?: string | null } | null;
+    expires?: string;
+  };
+  return {
+    authenticated: Boolean(payload?.user?.id),
+    user: payload?.user ?? null,
   };
 }
 

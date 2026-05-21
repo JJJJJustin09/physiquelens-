@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { SiteNav } from "@/components/layout/site-nav";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -10,6 +10,7 @@ import { Panel } from "@/components/layout/ui";
 
 export default function SignInPage() {
   const router = useRouter();
+  const { status } = useSession();
   const [callbackUrl, setCallbackUrl] = useState("/upload");
 
   const [email, setEmail] = useState("");
@@ -27,6 +28,12 @@ export default function SignInPage() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace(callbackUrl);
+    }
+  }, [callbackUrl, router, status]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -49,9 +56,11 @@ export default function SignInPage() {
     router.push(result?.url ?? callbackUrl);
   };
 
+  const signUpHref = `/auth/sign-up?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+
   return (
     <div className="min-h-screen bg-[#05070A]">
-      <SiteNav ctaHref="/auth/sign-up" ctaLabel="Create Account" />
+      <SiteNav ctaHref={signUpHref} ctaLabel="Create Account" />
       <main className="mx-auto flex w-full max-w-md px-4 py-14 sm:px-6 lg:px-8">
         <Panel className="w-full p-6 sm:p-7">
           <h1 className="text-2xl font-semibold tracking-tight text-white">Sign in</h1>
@@ -95,7 +104,7 @@ export default function SignInPage() {
 
           <p className="mt-4 text-sm text-slate-400">
             New to PhysiqueLens?{" "}
-            <Link href="/auth/sign-up" className="text-cyan-300 hover:text-cyan-200">
+            <Link href={signUpHref} className="text-cyan-300 hover:text-cyan-200">
               Create account
             </Link>
           </p>

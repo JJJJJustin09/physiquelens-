@@ -128,6 +128,7 @@ export async function POST(request: Request) {
       ],
       metadata: {
         userId: session.user.id,
+        email: session.user.email,
         submissionId: parsed.data.submissionId ?? "",
         priceId: env.STRIPE_PRICE_ID,
       },

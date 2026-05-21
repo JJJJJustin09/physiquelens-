@@ -8,7 +8,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { UploadCard } from "@/components/upload/upload-card";
 import { PhotoChecklist } from "@/components/upload/photo-checklist";
 import { InlineToast } from "@/components/layout/inline-toast";
-import { fetchBillingStatus } from "@/lib/api-client";
+import { fetchBillingStatus, fetchSessionStatus } from "@/lib/api-client";
 import { savePhotoMeta } from "@/lib/storage";
 
 type PhotoSlot = {
@@ -43,6 +43,11 @@ export default function UploadPage() {
   useEffect(() => {
     const timer = window.setTimeout(async () => {
       try {
+        const sessionStatus = await fetchSessionStatus();
+        if (!sessionStatus.authenticated) {
+          router.replace(`/auth/sign-in?callbackUrl=${encodeURIComponent("/upload")}`);
+          return;
+        }
         const billing = await fetchBillingStatus();
         if (billing.paidCredits > 0) {
           setPricingHint(
@@ -51,7 +56,12 @@ export default function UploadPage() {
         } else {
           setPricingHint("No paid credits available. Complete checkout to generate a report (USD $5).");
         }
-      } catch {
+      } catch (error) {
+        console.error("Failed to load upload page session/billing state:", error);
+        if (error instanceof Error && error.message === "Unauthorized") {
+          router.replace(`/auth/sign-in?callbackUrl=${encodeURIComponent("/upload")}`);
+          return;
+        }
         setPricingHint("Unable to load billing status. You can still continue and verify at checkout.");
       }
     }, 0);
@@ -61,7 +71,7 @@ export default function UploadPage() {
       objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
       objectUrlsRef.current = [];
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (allSelected) {
