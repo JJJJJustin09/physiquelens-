@@ -7,9 +7,9 @@ export function DisclaimerCard() {
       <div className="flex items-start gap-3">
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-cyan-200" />
         <p className="text-sm leading-6 text-cyan-50">
-          PhysiqueLens MVP uses simulated AI-style visual analysis. It is not medical advice, does
-          not diagnose health conditions, and does not guarantee specific fitness results. Scores may
-          be affected by photo angle, lighting, clothing, and pose.
+          PhysiqueLens uses simulated AI-style visual analysis in this version. It is not medical
+          advice, does not diagnose health conditions, and does not guarantee specific fitness
+          results. Scores may be affected by photo angle, lighting, clothing, and pose.
         </p>
       </div>
     </Panel>

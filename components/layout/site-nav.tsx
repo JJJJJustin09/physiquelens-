@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ActivitySquare, ArrowRight } from "lucide-react";
+import { AccountNav } from "@/components/layout/account-nav";
 
 type SiteNavProps = {
   ctaHref?: string;
@@ -12,6 +13,7 @@ type SiteNavProps = {
 const navLinks = [
   { href: "/how-it-works", label: "How it works" },
   { href: "/sample-report", label: "Sample Report" },
+  { href: "/account", label: "Account" },
   { href: "/privacy", label: "Privacy" },
 ];
 
@@ -48,13 +50,16 @@ export function SiteNav({
           })}
         </nav>
 
-        <Link
-          href={ctaHref}
-          className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/50 bg-cyan-500/15 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:border-cyan-300 hover:bg-cyan-500/25"
-        >
-          {ctaLabel}
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+        <div className="flex items-center">
+          <Link
+            href={ctaHref}
+            className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/50 bg-cyan-500/15 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:border-cyan-300 hover:bg-cyan-500/25"
+          >
+            {ctaLabel}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+          <AccountNav />
+        </div>
       </div>
       <nav className="flex items-center gap-5 overflow-x-auto border-t border-white/10 px-4 py-2 text-xs md:hidden">
         {navLinks.map((link) => {

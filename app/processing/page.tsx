@@ -5,27 +5,22 @@ import { useRouter } from "next/navigation";
 import { SiteNav } from "@/components/layout/site-nav";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ProcessingSteps } from "@/components/processing/processing-steps";
-import { generateMockReport } from "@/lib/mockReport";
-import {
-  clearPendingAccess,
-  finalizeReportConsumption,
-  getPendingAccess,
-  getQuestionnaireAnswers,
-  saveStoredReport,
-} from "@/lib/storage";
+import { generateReport } from "@/lib/api-client";
+import { clearFlowSubmission, getFlowSubmission, setLatestReportSubmissionId } from "@/lib/flow-storage";
+import { saveStoredReport } from "@/lib/storage";
 
 const totalSteps = 6;
 
 export default function ProcessingPage() {
   const router = useRouter();
   const [activeStep, setActiveStep] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const finalizedRef = useRef(false);
 
   useEffect(() => {
-    const answers = getQuestionnaireAnswers();
-    const access = getPendingAccess();
+    const flow = getFlowSubmission();
 
-    if (!answers || !access) {
+    if (!flow) {
       router.replace("/questionnaire");
       return;
     }
@@ -36,15 +31,26 @@ export default function ProcessingPage() {
           window.clearInterval(stepTimer);
           if (finalizedRef.current) return prev;
           finalizedRef.current = true;
-
-          const report = generateMockReport(answers);
-          saveStoredReport(report);
-          finalizeReportConsumption(access.type);
-          clearPendingAccess();
-
-          window.setTimeout(() => {
-            router.replace("/report?generated=1");
-          }, 500);
+          void (async () => {
+            try {
+              const report = await generateReport({
+                submissionId: flow.submissionId,
+                accessType: flow.accessType,
+              });
+              saveStoredReport(report);
+              setLatestReportSubmissionId(flow.submissionId);
+              clearFlowSubmission();
+              window.setTimeout(() => {
+                router.replace("/report?generated=1");
+              }, 500);
+            } catch (generateError) {
+              const message =
+                generateError instanceof Error
+                  ? generateError.message
+                  : "Failed to generate report.";
+              setError(message);
+            }
+          })();
 
           return prev;
         }
@@ -65,6 +71,11 @@ export default function ProcessingPage() {
         <p className="mb-8 text-center text-slate-300">
           Simulating AI-style physique assessment for MVP demo.
         </p>
+        {error ? (
+          <div className="mb-6 max-w-2xl rounded-xl border border-rose-400/35 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+            {error}
+          </div>
+        ) : null}
         <ProcessingSteps activeStep={activeStep} />
       </main>
       <SiteFooter />

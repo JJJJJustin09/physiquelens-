@@ -1,40 +1,74 @@
-# PhysiqueLens (Website MVP)
+# PhysiqueLens (Commercial MVP Foundation)
 
-PhysiqueLens is an English web app MVP for simulated physique assessment.
+PhysiqueLens is an English web app for simulated physique assessment with a production-ready commercial foundation.
 
-Core flow:
+Core user flow:
 - Landing page
 - Photo upload (front/side/back)
 - Questionnaire
+- Stripe checkout (when paid access is required)
 - Processing screen
 - Report dashboard
 
 This MVP **does not use real AI image recognition** and **does not call external AI APIs**.
 It uses questionnaire-based mock logic to generate a professional-style report demo.
 
-## Tech Stack
+## Stack
 
 - Next.js (App Router)
 - TypeScript
 - Tailwind CSS
 - Recharts
 - lucide-react
-- localStorage (no backend / no database)
+- NextAuth (credentials auth)
+- Prisma + PostgreSQL
+- Stripe Checkout + webhook verification
 
-## Pricing Logic in MVP
+## Commercial Features Included
 
-- First report: free
-- Second report onward: checkout required
+- Account sign-up / sign-in with protected app routes.
+- Server-side submission creation and report generation access checks.
+- Stripe checkout session creation and webhook-based payment confirmation.
+- Paid credits and report usage tracking per user.
+- Persistent storage for submissions, reports, and payments.
+- Account page showing recent payments and reports.
+
+## Pricing Logic
+
+- First generated report per account: free
+- Second report onward: 1 paid credit required
 - Price options in checkout page:
-  - USD 5 (global default)
-  - CNY 10 (Mainland China option)
+  - USD 5
+  - CNY 10
 
-Payment is currently simulated locally (no real payment gateway connected yet).
+## Environment Variables
+
+Create `.env` from `.env.example` and set:
+
+```env
+DATABASE_URL=
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=
+NEXT_PUBLIC_APP_URL=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_PRICE_USD_5=
+STRIPE_PRICE_CNY_10=
+```
+
+## Database Setup
+
+```bash
+npx prisma generate
+npx prisma migrate dev --name init_commercial_mvp
+```
 
 ## Run Locally
 
 ```bash
 npm install
+npx prisma generate
+npx prisma migrate dev --name init_commercial_mvp
 npm run dev
 ```
 
@@ -44,29 +78,21 @@ Open `http://localhost:3000`.
 
 ```bash
 npm run lint
-npm run build -- --webpack
+npm run build
 npm run start
 ```
 
-## Deploy as a Website (Vercel)
+## Deploy to Vercel
 
 1. Push this project to GitHub.
 2. Import the repo in Vercel.
 3. Framework preset: Next.js.
-4. Build command: `npm run build -- --webpack`
-5. Output: default Next.js output.
+4. Add required environment variables in Vercel project settings.
+5. Configure Stripe webhook endpoint to:
+   - `https://<your-domain>/api/checkout/webhook`
 6. Add your custom domain.
 
 ## Important Disclaimer
 
-PhysiqueLens MVP uses simulated AI-style visual analysis.
+PhysiqueLens uses simulated AI-style visual analysis in this version.
 It is not medical advice, does not diagnose health conditions, and does not guarantee fitness results.
-
-## Suggested Next Steps
-
-- Integrate real payment providers:
-  - Stripe for global card payments (USD)
-  - WeChat Pay / Alipay via supported PSP for CNY
-- Add server-side payment verification (webhooks)
-- Add user accounts and report history
-- Add real image-analysis pipeline in a future version

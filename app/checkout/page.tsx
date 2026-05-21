@@ -8,16 +8,41 @@ import { SiteNav } from "@/components/layout/site-nav";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { InlineToast } from "@/components/layout/inline-toast";
 import { Panel } from "@/components/layout/ui";
-import { getQuestionnaireAnswers, recordPayment, setPendingAccess } from "@/lib/storage";
+import { createCheckoutSession, verifyCheckoutSession } from "@/lib/api-client";
+import { getFlowSubmission, setFlowSubmission } from "@/lib/flow-storage";
+import { getQuestionnaireAnswers } from "@/lib/storage";
 
 type PriceOption = "CNY 10" | "USD 5";
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const [query, setQuery] = useState<{
+    status: string | null;
+    sessionId: string | null;
+    submissionId: string | null;
+  }>({
+    status: null,
+    sessionId: null,
+    submissionId: null,
+  });
   const [selected, setSelected] = useState<PriceOption>("CNY 10");
   const [paying, setPaying] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const flowSubmissionId = query.submissionId ?? getFlowSubmission()?.submissionId ?? null;
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const timer = window.setTimeout(() => {
+      setQuery({
+        status: params.get("status"),
+        sessionId: params.get("session_id"),
+        submissionId: params.get("submission_id"),
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const answers = getQuestionnaireAnswers();
@@ -25,9 +50,60 @@ export default function CheckoutPage() {
       router.replace("/questionnaire");
       return;
     }
+    if (!flowSubmissionId) {
+      router.replace("/questionnaire");
+      return;
+    }
+
+    const status = query.status;
+    const checkoutSessionId = query.sessionId;
+    if (status === "success" && checkoutSessionId) {
+      const verifyTimer = window.setTimeout(() => {
+        setPaying(true);
+        void (async () => {
+          try {
+            const verification = await verifyCheckoutSession(checkoutSessionId);
+            if (verification.status === "succeeded") {
+              setFlowSubmission(flowSubmissionId, "paid");
+              setToast("Payment confirmed. Continuing to report generation...");
+              router.replace("/processing");
+              return;
+            }
+            if (verification.status === "pending") {
+              setError("Payment is still processing. Please wait a few seconds and refresh.");
+            } else {
+              setError("Payment was not completed. Please try again.");
+            }
+          } catch (verifyError) {
+            const message =
+              verifyError instanceof Error
+                ? verifyError.message
+                : "Unable to verify payment status.";
+            setError(message);
+          } finally {
+            setPaying(false);
+          }
+        })();
+      }, 0);
+      const readyTimer = window.setTimeout(() => setReady(true), 0);
+      return () => {
+        window.clearTimeout(verifyTimer);
+        window.clearTimeout(readyTimer);
+      };
+    } else if (status === "cancel") {
+      const cancelTimer = window.setTimeout(() => {
+        setError("Checkout canceled. You can retry payment to unlock this report.");
+      }, 0);
+      const readyTimer = window.setTimeout(() => setReady(true), 0);
+      return () => {
+        window.clearTimeout(cancelTimer);
+        window.clearTimeout(readyTimer);
+      };
+    }
+
     const timer = window.setTimeout(() => setReady(true), 0);
     return () => window.clearTimeout(timer);
-  }, [router]);
+  }, [flowSubmissionId, query.sessionId, query.status, router]);
 
   useEffect(() => {
     const locale = Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase();
@@ -40,16 +116,29 @@ export default function CheckoutPage() {
   }, []);
 
   const handlePay = () => {
+    if (!flowSubmissionId) {
+      setError("Missing submission context. Please re-submit the questionnaire.");
+      return;
+    }
     setPaying(true);
+    setError(null);
 
-    window.setTimeout(() => {
-      recordPayment(selected);
-      setPendingAccess("paid");
-      setToast("Payment successful. Starting analysis...");
-      window.setTimeout(() => {
-        router.push("/processing");
-      }, 500);
-    }, 1400);
+    void (async () => {
+      try {
+        const checkoutUrl = await createCheckoutSession({
+          priceOption: selected === "USD 5" ? "USD_5" : "CNY_10",
+          submissionId: flowSubmissionId,
+        });
+        window.location.href = checkoutUrl;
+      } catch (checkoutError) {
+        const message =
+          checkoutError instanceof Error
+            ? checkoutError.message
+            : "Unable to start checkout.";
+        setError(message);
+        setPaying(false);
+      }
+    })();
   };
 
   if (!ready) {
@@ -76,8 +165,8 @@ export default function CheckoutPage() {
             </div>
             <h2 className="text-xl font-semibold text-white">Choose your price</h2>
             <p className="mt-2 text-sm text-slate-400">
-              This is an MVP payment gate. In this version, payment confirmation is simulated
-              locally.
+              Commercial flow is now connected to Stripe Checkout. Payment must be confirmed
+              before the next report is generated.
             </p>
 
             <div className="mt-5 space-y-3">
@@ -106,8 +195,7 @@ export default function CheckoutPage() {
             </button>
 
             <p className="mt-3 rounded-lg border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-              Simulated payment notice: this MVP does not process real charges yet. No card or
-              wallet will be charged in this version.
+              Test-mode note: when Stripe keys are test keys, no real card charge occurs.
             </p>
             <p className="mt-2 text-xs text-amber-200/90">
               For live payments, connect Stripe (USD) and a CNY-capable provider (for example
@@ -142,6 +230,12 @@ export default function CheckoutPage() {
             >
               Back to questionnaire
             </Link>
+
+            {error ? (
+              <p className="mt-4 rounded-lg border border-rose-400/35 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                {error}
+              </p>
+            ) : null}
           </Panel>
         </div>
       </main>

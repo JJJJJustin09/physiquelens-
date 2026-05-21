@@ -42,6 +42,16 @@ export type QuestionnaireAnswers = {
   focusArea: FocusArea;
 };
 
+export type PhotoMetaInput = {
+  frontSelected: boolean;
+  sideSelected: boolean;
+  backSelected: boolean;
+  frontFileName?: string;
+  sideFileName?: string;
+  backFileName?: string;
+  updatedAt: string;
+};
+
 export type ReportConfidence = "Low" | "Medium" | "Medium-high" | "High";
 export type PriorityLevel = "Low" | "Medium" | "Medium-high" | "High" | "Maintenance" | "Monitor";
 

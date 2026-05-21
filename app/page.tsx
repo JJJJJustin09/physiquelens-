@@ -118,6 +118,9 @@ export default function HomePage() {
             <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
               Start with clarity.
             </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-300">
+              Sign in is required for report generation, paid checkout, and report history access.
+            </p>
             <Link
               href="/upload"
               className="btn-primary mx-auto mt-6"

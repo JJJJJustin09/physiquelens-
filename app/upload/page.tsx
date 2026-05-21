@@ -8,7 +8,8 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { UploadCard } from "@/components/upload/upload-card";
 import { PhotoChecklist } from "@/components/upload/photo-checklist";
 import { InlineToast } from "@/components/layout/inline-toast";
-import { getFreeReportRemaining, savePhotoMeta } from "@/lib/storage";
+import { fetchBillingStatus } from "@/lib/api-client";
+import { savePhotoMeta } from "@/lib/storage";
 
 type PhotoSlot = {
   previewUrl?: string;
@@ -31,9 +32,7 @@ export default function UploadPage() {
   const router = useRouter();
   const [photos, setPhotos] = useState<PhotoState>(emptyState);
   const [toast, setToast] = useState<{ message: string; variant: "info" | "success" } | null>(null);
-  const [freeRemaining] = useState(() =>
-    typeof window === "undefined" ? true : getFreeReportRemaining(),
-  );
+  const [pricingHint, setPricingHint] = useState("First report is free. Second report onward requires payment (CNY 10 or USD 5 each).");
   const objectUrlsRef = useRef<string[]>([]);
 
   const allSelected = useMemo(
@@ -42,7 +41,25 @@ export default function UploadPage() {
   );
 
   useEffect(() => {
+    const timer = window.setTimeout(async () => {
+      try {
+        const billing = await fetchBillingStatus();
+        if (billing.freeReportRemaining) {
+          setPricingHint("First report is free. Second report onward requires payment (CNY 10 or USD 5 each).");
+        } else if (billing.paidCredits > 0) {
+          setPricingHint(
+            `You have ${billing.paidCredits} paid credit${billing.paidCredits > 1 ? "s" : ""} available for report generation.`,
+          );
+        } else {
+          setPricingHint("Free report already used. Next report requires payment (CNY 10 or USD 5).");
+        }
+      } catch {
+        setPricingHint("Unable to load billing status. You can still continue and verify at checkout.");
+      }
+    }, 0);
+
     return () => {
+      window.clearTimeout(timer);
       objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
       objectUrlsRef.current = [];
     };
@@ -121,9 +138,7 @@ export default function UploadPage() {
             Upload front, side, and back photos for your simulated AI-style physique report.
           </p>
           <p className="mt-2 text-sm text-slate-400">
-            {freeRemaining
-              ? "First report is free. Second report onward requires payment (CNY 10 or USD 5 each)."
-              : "Free report already used. Next report will require checkout (CNY 10 or USD 5)."}
+            {pricingHint}
           </p>
         </div>
 

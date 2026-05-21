@@ -7,7 +7,9 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { InlineToast } from "@/components/layout/inline-toast";
 import { ReportShell } from "@/components/report/report-shell";
 import type { Report } from "@/lib/types";
-import { clearAnalysisState, getBillingState, getStoredReport } from "@/lib/storage";
+import { fetchBillingStatus, fetchLatestReport } from "@/lib/api-client";
+import { clearLatestReportSubmissionId, getLatestReportSubmissionId } from "@/lib/flow-storage";
+import { clearAnalysisState, getStoredReport } from "@/lib/storage";
 import { getDefaultSampleReport } from "@/lib/mockReport";
 import { Panel } from "@/components/layout/ui";
 
@@ -23,29 +25,45 @@ export default function ReportPage() {
   } | null>(null);
 
   useEffect(() => {
-    const stored = getStoredReport();
-    const timer = window.setTimeout(() => {
-      if (!stored) {
-        const sample = getDefaultSampleReport();
-        sample.isSample = true;
-        setReport(sample);
-        setFallbackNotice("No saved analysis found. Showing sample report.");
-        const billing = getBillingState();
+    const timer = window.setTimeout(async () => {
+      const lastSubmissionId = getLatestReportSubmissionId() ?? undefined;
+      try {
+        const [latest, billing] = await Promise.all([
+          fetchLatestReport(lastSubmissionId),
+          fetchBillingStatus(),
+        ]);
+
+        if (latest.report) {
+          setReport(latest.report);
+          clearLatestReportSubmissionId();
+        } else {
+          const stored = getStoredReport();
+          if (stored) {
+            setReport(stored);
+          } else {
+            const sample = getDefaultSampleReport();
+            sample.isSample = true;
+            setReport(sample);
+            setFallbackNotice("No saved analysis found. Showing sample report.");
+          }
+        }
+
         setBillingSummary({
           completedReports: billing.completedReports,
           totalPayments: billing.totalPayments,
           paidCredits: billing.paidCredits,
         });
-        return;
+      } catch {
+        const stored = getStoredReport();
+        if (stored) {
+          setReport(stored);
+        } else {
+          const sample = getDefaultSampleReport();
+          sample.isSample = true;
+          setReport(sample);
+          setFallbackNotice("Could not load server report. Showing sample report.");
+        }
       }
-
-      setReport(stored);
-      const billing = getBillingState();
-      setBillingSummary({
-        completedReports: billing.completedReports,
-        totalPayments: billing.totalPayments,
-        paidCredits: billing.paidCredits,
-      });
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);

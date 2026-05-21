@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SubmissionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+model User {
+  id              String      @id @default(cuid())
+  name            String?
+  email           String      @unique
+  emailVerified   DateTime?
+  image           String?
+  passwordHash    String?
+  paidCredits     Int         @default(0)
+  reportsGenerated Int        @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  accounts        Account[]
+  sessions        Session[]
+  submissions     Submission[]
+  reports         ReportRecord[]
+  payments        Payment[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sessionToken])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model Submission {
+  id            String           @id @default(cuid())
+  userId        String
+  status        SubmissionStatus @default(PENDING)
+  photoMeta     Json
+  questionnaire Json
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report ReportRecord?
+
+  @@index([userId, createdAt])
+}
+
+model ReportRecord {
+  id            String   @id @default(cuid())
+  userId        String
+  submissionId  String   @unique
+  overallScore  Int
+  reportPayload Json
+  createdAt     DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Payment {
+  id                      String        @id @default(cuid())
+  userId                  String
+  stripeCheckoutSessionId String        @unique
+  stripePaymentIntentId   String?       @unique
+  stripeCustomerId        String?
+  amount                  Int
+  currency                String
+  creditsPurchased        Int           @default(1)
+  status                  PaymentStatus @default(PENDING)
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
