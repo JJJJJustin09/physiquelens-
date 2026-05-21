@@ -24,8 +24,7 @@ export async function getUserBillingState(userId: string) {
     completedReports: user.reportsGenerated,
     paidCredits: user.paidCredits,
     totalPayments: user.payments.length,
-    freeReportRemaining: user.reportsGenerated === 0,
-    canStartNewAnalysis: user.reportsGenerated === 0 || user.paidCredits > 0,
+    canStartNewAnalysis: user.paidCredits > 0,
     lastPayment:
       user.payments[0] != null
         ? {
@@ -37,7 +36,7 @@ export async function getUserBillingState(userId: string) {
   };
 }
 
-export async function consumeUserAnalysisAccess(userId: string, accessType: "free" | "paid") {
+export async function consumeUserAnalysisAccess(userId: string) {
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.findUnique({
       where: { id: userId },
@@ -46,18 +45,6 @@ export async function consumeUserAnalysisAccess(userId: string, accessType: "fre
 
     if (!user) {
       throw new Error("User not found.");
-    }
-
-    if (accessType === "free") {
-      if (user.reportsGenerated > 0) {
-        throw new Error("Free report has already been used.");
-      }
-      return tx.user.update({
-        where: { id: userId },
-        data: {
-          reportsGenerated: { increment: 1 },
-        },
-      });
     }
 
     if (user.paidCredits <= 0) {

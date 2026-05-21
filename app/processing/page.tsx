@@ -35,7 +35,6 @@ export default function ProcessingPage() {
             try {
               const report = await generateReport({
                 submissionId: flow.submissionId,
-                accessType: flow.accessType,
               });
               saveStoredReport(report);
               setLatestReportSubmissionId(flow.submissionId);

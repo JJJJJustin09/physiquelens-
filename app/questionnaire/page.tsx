@@ -70,15 +70,18 @@ export default function QuestionnairePage() {
           photoMeta,
           questionnaire: values,
         });
-        setFlowSubmission(submission.submissionId, submission.requiredAccess);
-        if (submission.requiredAccess === "paid") {
-          router.push(`/checkout?submission_id=${encodeURIComponent(submission.submissionId)}`);
-          return;
-        }
+        setFlowSubmission(submission.submissionId);
         router.push("/processing");
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unable to continue. Please try again.";
+        if (/payment required/i.test(message)) {
+          setApiError(
+            "No paid credits available. Please go to checkout to purchase report access.",
+          );
+          router.push("/checkout");
+          return;
+        }
         setApiError(message);
         setSubmitting(false);
       }
@@ -105,8 +108,8 @@ export default function QuestionnairePage() {
 
         {needsPayment ? (
           <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-sm text-amber-100">
-            Your first report is free. Starting from the second report, checkout is required (CNY 10
-            or USD 5 per report).
+            Every report requires one paid credit. Please complete checkout (CNY 10 or USD 5 per
+            report) before generating analysis.
           </div>
         ) : paidCredits > 0 ? (
           <div className="mt-4 rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-4 py-3 text-sm text-cyan-100">
@@ -114,8 +117,8 @@ export default function QuestionnairePage() {
             submission will use one credit.
           </div>
         ) : (
-          <div className="mt-4 rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-100">
-            First report access is free for this account.
+          <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-sm text-amber-100">
+            No paid credits available. Please complete checkout before generating a report.
           </div>
         )}
 

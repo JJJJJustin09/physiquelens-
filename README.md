@@ -35,8 +35,7 @@ It uses questionnaire-based mock logic to generate a professional-style report d
 
 ## Pricing Logic
 
-- First generated report per account: free
-- Second report onward: 1 paid credit required
+- Every generated report requires 1 paid credit
 - Price options in checkout page:
   - USD 5
   - CNY 10

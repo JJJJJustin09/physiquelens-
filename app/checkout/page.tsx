@@ -46,16 +46,17 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const answers = getQuestionnaireAnswers();
-    if (!answers) {
+    const status = query.status;
+    const hasCheckoutReturn = status === "success" || status === "cancel";
+    if (!answers && !hasCheckoutReturn) {
       router.replace("/questionnaire");
       return;
     }
-    if (!flowSubmissionId) {
+    if (!flowSubmissionId && !hasCheckoutReturn) {
       router.replace("/questionnaire");
       return;
     }
 
-    const status = query.status;
     const checkoutSessionId = query.sessionId;
     if (status === "success" && checkoutSessionId) {
       const verifyTimer = window.setTimeout(() => {
@@ -64,7 +65,10 @@ export default function CheckoutPage() {
           try {
             const verification = await verifyCheckoutSession(checkoutSessionId);
             if (verification.status === "succeeded") {
-              setFlowSubmission(flowSubmissionId, "paid");
+              const submissionIdForFlow = flowSubmissionId ?? query.submissionId;
+              if (submissionIdForFlow) {
+                setFlowSubmission(submissionIdForFlow);
+              }
               setToast("Payment confirmed. Continuing to report generation...");
               router.replace("/processing");
               return;
@@ -103,7 +107,7 @@ export default function CheckoutPage() {
 
     const timer = window.setTimeout(() => setReady(true), 0);
     return () => window.clearTimeout(timer);
-  }, [flowSubmissionId, query.sessionId, query.status, router]);
+  }, [flowSubmissionId, query.sessionId, query.status, query.submissionId, router]);
 
   useEffect(() => {
     const locale = Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase();
@@ -149,10 +153,9 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-[#05070A]">
       <SiteNav ctaHref="/sample-report" ctaLabel="View Sample Report" />
       <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-semibold tracking-tight text-white">Unlock Next Report</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-white">Unlock Report Access</h1>
         <p className="mt-2 text-slate-300">
-          Your first report is free. Starting from your second report, each new analysis requires
-          one payment.
+          Every report requires one paid credit. Complete payment to generate this report.
         </p>
         <p className="mt-2 text-sm text-slate-400">
           Global pricing: pay with USD 5 (international) or CNY 10 (Mainland China option).

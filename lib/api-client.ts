@@ -4,7 +4,6 @@ type BillingStateResponse = {
   completedReports: number;
   paidCredits: number;
   totalPayments: number;
-  freeReportRemaining: boolean;
   canStartNewAnalysis: boolean;
   lastPayment: {
     amount: number;
@@ -41,14 +40,12 @@ export async function createSubmission(payload: {
 
   return (await response.json()) as {
     submissionId: string;
-    requiredAccess: "free" | "paid";
     createdAt: string;
   };
 }
 
 export async function generateReport(payload: {
   submissionId: string;
-  accessType: "free" | "paid";
 }) {
   const response = await fetch("/api/reports/generate", {
     method: "POST",

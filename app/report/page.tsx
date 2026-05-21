@@ -98,9 +98,7 @@ export default function ReportPage() {
           <div className="mx-auto mt-6 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
             <Panel className="p-4 text-sm text-slate-300">
               Usage: {billingSummary.completedReports} report(s) generated.{" "}
-              {billingSummary.completedReports === 0
-                ? "First report free is still available."
-                : `Payments completed: ${billingSummary.totalPayments}. Paid credits left: ${billingSummary.paidCredits}.`}
+              {`Payments completed: ${billingSummary.totalPayments}. Paid credits left: ${billingSummary.paidCredits}.`}
             </Panel>
           </div>
         ) : null}

@@ -69,12 +69,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "User not found." }, { status: 404 });
   }
 
-  let requiredAccess: "free" | "paid";
-  if (billing.freeReportRemaining) {
-    requiredAccess = "free";
-  } else if (billing.paidCredits > 0) {
-    requiredAccess = "paid";
-  } else {
+  if (billing.paidCredits <= 0) {
     return NextResponse.json(
       {
         error: "Payment required before generating the next report.",
@@ -95,7 +90,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     submissionId: submission.id,
-    requiredAccess,
     createdAt: submission.createdAt.toISOString(),
   });
 }

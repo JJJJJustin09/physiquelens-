@@ -104,8 +104,8 @@ export default function HomePage() {
                 not diagnose health conditions.
                 </p>
                 <p className="mt-2 text-cyan-100/90">
-                  Global access model: first report is free, then USD 5 internationally or CNY 10 in
-                  Mainland China.
+                  Global access model: each report requires one payment, USD 5 internationally or
+                  CNY 10 in Mainland China.
                 </p>
               </div>
             </div>

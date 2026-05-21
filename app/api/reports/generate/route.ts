@@ -10,7 +10,6 @@ import type { QuestionnaireAnswers, Report } from "@/lib/types";
 
 const bodySchema = z.object({
   submissionId: z.string().min(1),
-  accessType: z.enum(["free", "paid"]),
 });
 
 export async function POST(request: Request) {
@@ -51,7 +50,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await consumeUserAnalysisAccess(session.user.id, parsed.data.accessType);
+    await consumeUserAnalysisAccess(session.user.id);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Access check failed.";
     return NextResponse.json({ error: message }, { status: 402 });

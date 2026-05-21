@@ -32,7 +32,7 @@ export default function UploadPage() {
   const router = useRouter();
   const [photos, setPhotos] = useState<PhotoState>(emptyState);
   const [toast, setToast] = useState<{ message: string; variant: "info" | "success" } | null>(null);
-  const [pricingHint, setPricingHint] = useState("First report is free. Second report onward requires payment (CNY 10 or USD 5 each).");
+  const [pricingHint, setPricingHint] = useState("Each report requires one paid credit (CNY 10 or USD 5).");
   const objectUrlsRef = useRef<string[]>([]);
 
   const allSelected = useMemo(
@@ -44,14 +44,12 @@ export default function UploadPage() {
     const timer = window.setTimeout(async () => {
       try {
         const billing = await fetchBillingStatus();
-        if (billing.freeReportRemaining) {
-          setPricingHint("First report is free. Second report onward requires payment (CNY 10 or USD 5 each).");
-        } else if (billing.paidCredits > 0) {
+        if (billing.paidCredits > 0) {
           setPricingHint(
             `You have ${billing.paidCredits} paid credit${billing.paidCredits > 1 ? "s" : ""} available for report generation.`,
           );
         } else {
-          setPricingHint("Free report already used. Next report requires payment (CNY 10 or USD 5).");
+          setPricingHint("No paid credits available. Complete checkout to generate a report (CNY 10 or USD 5).");
         }
       } catch {
         setPricingHint("Unable to load billing status. You can still continue and verify at checkout.");

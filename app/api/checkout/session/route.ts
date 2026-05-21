@@ -33,7 +33,10 @@ export async function POST(request: Request) {
     select: { id: true },
   });
   if (!submission) {
-    return NextResponse.json({ error: "Submission not found." }, { status: 404 });
+    return NextResponse.json(
+      { error: "Submission not found. Please submit the questionnaire again." },
+      { status: 404 },
+    );
   }
 
   const priceId =
